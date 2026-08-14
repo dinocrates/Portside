@@ -1,0 +1,41 @@
+{
+  "id": "controls-tutorial",
+  "version": 1,
+  "title": "Controls Tutorial",
+  "brief": "Get a feel for the trolley controls. Move left and right, watch the position, velocity, and acceleration readouts respond. There is no penalty for a rough run here.",
+  "features": {
+    "manualMode": true,
+    "automatedMode": false,
+    "verticalMotion": false,
+    "sway": false,
+    "cargoShift": false,
+    "collisions": false,
+    "forces": false,
+    "energy": false
+  },
+  "geometry": {
+    "trolleyMinX_m": 0,
+    "trolleyMaxX_m": 12,
+    "initialX_m": 0,
+    "targetX_m": 10,
+    "targetTolerance_m": 1.0,
+    "initialCableLength_m": 8,
+    "obstacles": []
+  },
+  "limits": {
+    "maxSpeed_mps": 5.0,
+    "maxAcceleration_mps2": 2.0,
+    "finalSpeedTolerance_mps": 1.0,
+    "completionDwellTime_s": 0.1
+  },
+  "cargo": {
+    "simplifiedThresholdOnly": true
+  },
+  "scoring": [],
+  "pedagogy": {
+    "showLiveGraphs": true,
+    "allowPredictionPreview": true,
+    "allowUnlimitedRuns": true,
+    "showHiddenPhysics": true
+  }
+}

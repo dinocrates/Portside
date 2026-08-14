@@ -1,0 +1,27 @@
+{
+  "description": "Trapezoidal profile (accelerate 5s @0.8 m/s^2, cruise 2.5s @0, decelerate 5s @-0.8 m/s^2) computed analytically for the Fragile Freight Transfer scenario (30 m, aMax=0.8 m/s^2, vMax=4.0 m/s). Should reach the target at rest and satisfy every scoring requirement.",
+  "scenarioId": "fragile-freight-transfer",
+  "scenarioVersion": 1,
+  "seed": "golden-trapezoidal-1",
+  "simulateFor_s": 13.5,
+  "profile": [
+    { "id": "accelerate", "name": "Accelerate", "duration_s": 5.0, "trolleyAcceleration_mps2": 0.8 },
+    { "id": "cruise", "name": "Cruise", "duration_s": 2.5, "trolleyAcceleration_mps2": 0.0 },
+    { "id": "decelerate", "name": "Decelerate", "duration_s": 5.0, "trolleyAcceleration_mps2": -0.8 }
+  ],
+  "expected": {
+    "runState": "complete",
+    "x_m": 30.0,
+    "vx_mps": 0.0,
+    "positionTolerance_m": 0.01,
+    "velocityTolerance_mps": 0.01,
+    "requirements": {
+      "final-position": true,
+      "final-speed": true,
+      "max-speed": true,
+      "max-acceleration": true,
+      "cycle-time": true,
+      "travel-envelope": true
+    }
+  }
+}

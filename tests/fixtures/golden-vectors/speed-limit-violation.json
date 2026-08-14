@@ -1,0 +1,16 @@
+{
+  "description": "A single overlong acceleration phase drives the trolley past the 4.0 m/s speed limit around t=5.0 s. The run must fail immediately, with max-speed reported as the violated requirement.",
+  "scenarioId": "fragile-freight-transfer",
+  "scenarioVersion": 1,
+  "seed": "golden-speed-violation-1",
+  "simulateFor_s": 7.0,
+  "profile": [
+    { "id": "overlong-accelerate", "name": "Accelerate", "duration_s": 6.0, "trolleyAcceleration_mps2": 0.8 }
+  ],
+  "expected": {
+    "runState": "failed",
+    "requirements": {
+      "max-speed": false
+    }
+  }
+}

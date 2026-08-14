@@ -1,0 +1,16 @@
+{
+  "description": "A profile that accelerates to cruise speed and never decelerates. The trolley coasts through the target and eventually contacts the travel-envelope wall, which fails the run. (This is a proxy for the spec's dedicated 'automated profile ended while the system was still moving' failure reason (§7.2) — that specific gate isn't wired into the Milestone 0 engine yet, see the scope note in src/sim/engine.ts. Real crane-wall physics makes the run fail here regardless.)",
+  "scenarioId": "fragile-freight-transfer",
+  "scenarioVersion": 1,
+  "seed": "golden-no-decel-1",
+  "simulateFor_s": 12.0,
+  "profile": [
+    { "id": "accelerate-only", "name": "Accelerate", "duration_s": 5.0, "trolleyAcceleration_mps2": 0.8 }
+  ],
+  "expected": {
+    "runState": "failed",
+    "requirements": {
+      "travel-envelope": false
+    }
+  }
+}
