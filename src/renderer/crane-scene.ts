@@ -84,7 +84,11 @@ export class CraneScene extends Phaser.Scene {
    * mutates simulation state.
    */
   private renderFromSnapshot(): void {
-    const snapshot = this.orchestrator.getSnapshot();
+    // getDisplaySnapshot(), not getSnapshot(): while replaying, this is the
+    // recorded sample nearest the scrub cursor, not the (frozen) live
+    // engine state — spec §13.4, "moving the replay cursor updates the
+    // scene to the corresponding recorded sample."
+    const snapshot = this.orchestrator.getDisplaySnapshot();
     const x_px = this.transform.xToPixels(snapshot.trolley_x_m);
     this.trolleyRect.x = x_px;
     this.containerRect.x = x_px;

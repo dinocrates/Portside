@@ -8,6 +8,7 @@ import { mountManualControls } from './ui/manual-controls';
 import { mountProfileEditor } from './ui/profile-editor';
 import { mountResultsPanel } from './ui/results-panel';
 import { mountFeedbackMessage, mountLiveStrip } from './ui/live-strip';
+import { mountAnalysisView } from './ui/analysis-view';
 
 function byId(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -30,6 +31,7 @@ mountProfileEditor(byId('profile-editor-panel'), orchestrator);
 mountResultsPanel(byId('results-panel'), orchestrator);
 mountLiveStrip(byId('live-strip'), orchestrator);
 mountFeedbackMessage(byId('feedback-message'), orchestrator);
+mountAnalysisView(byId('analysis-view'), orchestrator);
 
 // Progressive disclosure (spec design principle 4): show only the panel
 // for the active mode.

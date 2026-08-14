@@ -7,13 +7,16 @@ import type { RunOrchestrator } from '../app/app-state';
 
 export function mountLiveStrip(container: HTMLElement, orchestrator: RunOrchestrator): void {
   function render(): void {
-    const s = orchestrator.getSnapshot();
+    // getDisplaySnapshot() so the strip's numbers track the replay cursor
+    // while scrubbing, not just the (frozen) final live state.
+    const s = orchestrator.getDisplaySnapshot();
+    const replaying = orchestrator.isReplayingNow() ? '  (replay)' : '';
     container.textContent =
       `t = ${s.time_s.toFixed(2)} s   ` +
       `x = ${s.trolley_x_m.toFixed(2)} m   ` +
       `v = ${s.trolley_v_mps.toFixed(2)} m/s   ` +
       `a = ${s.trolley_a_mps2.toFixed(2)} m/s²   ` +
-      `state = ${orchestrator.getDisplayRunState()}`;
+      `state = ${orchestrator.getDisplayRunState()}${replaying}`;
   }
 
   orchestrator.onChange(render);

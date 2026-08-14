@@ -288,3 +288,90 @@ ul.requirement-list li {
 .requirement-detail {
   color: var(--muted);
 }
+
+/* --- Analysis view: replay transport + aligned charts --- */
+
+#analysis-view {
+  margin: 0 1rem 1rem;
+  padding: 0.75rem 1rem 1rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.replay-scrubber {
+  flex: 1;
+  min-width: 220px;
+}
+
+.replay-time {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  min-width: 8rem;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.chart-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.aligned-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chart-panel {
+  margin: 0;
+  background: #fcfcfb;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem 0.4rem;
+}
+
+.chart-panel figcaption {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.2rem;
+}
+
+.aligned-chart-svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 720 / 130;
+}
+
+.chart-summary {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.chart-readout {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--ink);
+  margin: 0.5rem 0 0;
+}
+
+.charts-container:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

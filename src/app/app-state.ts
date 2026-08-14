@@ -30,6 +30,26 @@ import { Recorder } from '../analysis/recorder';
 
 export type UiMode = 'manual' | 'automated';
 
+/** The recorded sample whose time_s is closest to `time_s`. Assumes samples are time-ordered (true by construction — Recorder only appends). */
+function findNearestSample(
+  samples: readonly SimulationSnapshot[],
+  time_s: number,
+): SimulationSnapshot | null {
+  if (samples.length === 0) return null;
+  // Samples are few enough per run (hundreds, at 20-30 Hz) that a linear
+  // scan is simpler than a binary search and not a real cost.
+  let nearest = samples[0]!;
+  let bestDelta = Math.abs(nearest.time_s - time_s);
+  for (const sample of samples) {
+    const delta = Math.abs(sample.time_s - time_s);
+    if (delta < bestDelta) {
+      nearest = sample;
+      bestDelta = delta;
+    }
+  }
+  return nearest;
+}
+
 /** A default, already-valid three-phase template (spec §6.3) — a starting point for editing, not a revealed answer. */
 export function createDefaultProfileTemplate(scenario: ScenarioConfig): MotionProfile {
   const a = scenario.limits.maxAcceleration_mps2 / 2;
@@ -51,10 +71,18 @@ export class RunOrchestrator {
 
   private mode: UiMode = 'manual';
   private profile: MotionProfile;
+  private profileUsedForRun: MotionProfile | null = null;
   private snapshot: SimulationSnapshot;
   private started = false;
   private paused = false;
   private lastFeedback = '';
+  private seed: string;
+
+  // Replay (spec §6.1): scrubbing through a *completed* run's recorded
+  // snapshots without rerunning physics. `replayTime_s` is the cursor
+  // position; it only has meaning once `isReplaying` is true.
+  private isReplaying = false;
+  private replayTime_s = 0;
 
   private listeners = new Set<() => void>();
 
@@ -65,6 +93,7 @@ export class RunOrchestrator {
       maxAcceptedFrameGap_s: DEFAULT_TOLERANCES.maxAcceptedFrameGap_s,
     });
     this.profile = createDefaultProfileTemplate(scenario);
+    this.seed = seed;
     this.snapshot = this.engine.reset(scenario, seed);
   }
 
@@ -79,8 +108,66 @@ export class RunOrchestrator {
 
   // --- Read state ---------------------------------------------------
 
+  /** The engine's authoritative live state — always the physics truth, never affected by replay scrubbing. */
   getSnapshot(): SimulationSnapshot {
     return this.snapshot;
+  }
+
+  /** What the scene/live-strip should actually render: the live snapshot normally, or the recorded sample nearest the replay cursor while replaying (spec §13.4: "Moving the replay cursor updates the scene to the corresponding recorded sample"). */
+  getDisplaySnapshot(): SimulationSnapshot {
+    if (this.isReplayingNow()) {
+      return findNearestSample(this.recorder.getSamples(), this.replayTime_s) ?? this.snapshot;
+    }
+    return this.snapshot;
+  }
+
+  isReplayingNow(): boolean {
+    return this.isReplaying;
+  }
+
+  getReplayTime_s(): number {
+    return this.replayTime_s;
+  }
+
+  canReplay(): boolean {
+    return this.isTerminal() && this.recorder.getSamples().length > 0;
+  }
+
+  getReplayBounds(): { min_s: number; max_s: number } | null {
+    const samples = this.recorder.getSamples();
+    if (samples.length === 0) return null;
+    return { min_s: samples[0]!.time_s, max_s: samples[samples.length - 1]!.time_s };
+  }
+
+  startReplay(): void {
+    if (!this.canReplay()) return;
+    this.isReplaying = true;
+    this.replayTime_s = this.getReplayBounds()!.min_s;
+    this.emitChange();
+  }
+
+  /** Move the shared replay cursor (spec §9.2: "the shared cursor updates the scene replay"). Clamped to the recorded range. */
+  scrubTo(time_s: number): void {
+    if (!this.isReplaying) return;
+    const bounds = this.getReplayBounds();
+    if (!bounds) return;
+    this.replayTime_s = Math.min(bounds.max_s, Math.max(bounds.min_s, time_s));
+    this.emitChange();
+  }
+
+  exitReplay(): void {
+    if (!this.isReplaying) return;
+    this.isReplaying = false;
+    this.emitChange();
+  }
+
+  getSeed(): string {
+    return this.seed;
+  }
+
+  /** The exact profile that produced the current/most recent automated run — distinct from `getProfile()`, which may have been edited since (spec §6.3: editing and rerunning must never reuse stale state, so the *run record* pins the profile that was actually executed). */
+  getProfileUsedForRun(): MotionProfile | null {
+    return this.profileUsedForRun;
   }
 
   getMode(): UiMode {
@@ -196,16 +283,20 @@ export class RunOrchestrator {
 
   start(): void {
     if (!this.canStart()) return;
-    this.snapshot = this.engine.reset(this.scenario, `run-${Date.now()}`);
+    this.seed = `run-${Date.now()}`;
+    this.snapshot = this.engine.reset(this.scenario, this.seed);
     this.accumulator.reset();
     this.recorder.reset();
     this.paused = false;
     this.started = true;
     this.lastFeedback = '';
+    this.isReplaying = false;
 
     if (this.mode === 'manual') {
+      this.profileUsedForRun = null;
       this.manualController.reset(this.snapshot, this.scenario);
     } else {
+      this.profileUsedForRun = this.profile;
       this.profileController = new ProfileController(this.profile);
       this.profileController.reset(this.snapshot, this.scenario);
     }
@@ -235,14 +326,17 @@ export class RunOrchestrator {
   }
 
   reset(): void {
-    this.snapshot = this.engine.reset(this.scenario, `run-${Date.now()}`);
+    this.seed = `run-${Date.now()}`;
+    this.snapshot = this.engine.reset(this.scenario, this.seed);
     this.accumulator.reset();
     this.recorder.reset();
     this.manualController.setDirection('none');
     this.profileController = null;
+    this.profileUsedForRun = null;
     this.started = false;
     this.paused = false;
     this.lastFeedback = '';
+    this.isReplaying = false;
     this.emitChange();
   }
 
@@ -269,7 +363,16 @@ export class RunOrchestrator {
 
   private advanceOneStep(): void {
     const command = this.activeController().command(this.snapshot, DEFAULT_PHYSICS_DT_S);
-    this.snapshot = this.engine.step(command, DEFAULT_PHYSICS_DT_S);
+    let next = this.engine.step(command, DEFAULT_PHYSICS_DT_S);
+    if (this.mode === 'automated' && this.profileController) {
+      // The engine has no concept of "phases" (that's controller-owned
+      // state, correctly outside the physics core — see ADR-0001), so the
+      // orchestrator is the integration point that overlays it onto the
+      // snapshot. The profile always starts synchronized with the engine
+      // reset (both at t=0), so run time_s doubles as elapsed profile time.
+      next = { ...next, activePhaseId: this.profileController.activePhaseId(next.time_s) };
+    }
+    this.snapshot = next;
     if (this.isTerminal()) {
       this.recorder.sampleTerminal(this.snapshot);
     } else {

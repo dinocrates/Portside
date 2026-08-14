@@ -144,4 +144,93 @@ describe('RunOrchestrator — automated mode', () => {
     orch.removePhase(firstId);
     expect(orch.getProfile().find((p) => p.id === firstId)).toBeUndefined();
   });
+
+  it('records activePhaseId on samples and pins the profile actually used for the run', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    orch.setMode('automated');
+    const profile = [
+      { id: 'accelerate', name: 'Accelerate', duration_s: 5.0, trolleyAcceleration_mps2: 0.8 },
+      { id: 'cruise', name: 'Cruise', duration_s: 2.5, trolleyAcceleration_mps2: 0.0 },
+      { id: 'decelerate', name: 'Decelerate', duration_s: 5.0, trolleyAcceleration_mps2: -0.8 },
+    ];
+    orch.setProfile(profile);
+    orch.start();
+    expect(orch.getProfileUsedForRun()).toEqual(profile);
+
+    for (let i = 0; i < Math.round(1 / dt); i++) orch.tick(dt); // 1s in -> should be mid "accelerate"
+    expect(orch.getSnapshot().activePhaseId).toBe('accelerate');
+
+    for (let i = 0; i < Math.round(6 / dt); i++) orch.tick(dt); // 7s in -> should be mid "cruise"
+    expect(orch.getSnapshot().activePhaseId).toBe('cruise');
+
+    // Editing the draft profile afterward must not retroactively change what the run record says was used.
+    orch.setProfile([{ id: 'edited', name: 'Edited', duration_s: 1, trolleyAcceleration_mps2: 0 }]);
+    expect(orch.getProfileUsedForRun()).toEqual(profile);
+  });
+});
+
+describe('RunOrchestrator — replay', () => {
+  function runToCompletion(orch: RunOrchestrator): void {
+    orch.setMode('automated');
+    orch.setProfile([
+      { id: 'accelerate', name: 'Accelerate', duration_s: 5.0, trolleyAcceleration_mps2: 0.8 },
+      { id: 'cruise', name: 'Cruise', duration_s: 2.5, trolleyAcceleration_mps2: 0.0 },
+      { id: 'decelerate', name: 'Decelerate', duration_s: 5.0, trolleyAcceleration_mps2: -0.8 },
+    ]);
+    orch.start();
+    const totalSteps = Math.ceil(13.5 / dt);
+    for (let i = 0; i < totalSteps; i++) orch.tick(dt);
+  }
+
+  it('cannot replay before a run reaches a terminal state', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    expect(orch.canReplay()).toBe(false);
+    orch.startReplay();
+    expect(orch.isReplayingNow()).toBe(false);
+  });
+
+  it('replay does not affect the live engine snapshot, only the display snapshot', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    runToCompletion(orch);
+    expect(orch.canReplay()).toBe(true);
+
+    const liveFinal = orch.getSnapshot();
+    orch.startReplay();
+    orch.scrubTo(2.0);
+
+    expect(orch.getSnapshot()).toBe(liveFinal); // untouched
+    expect(orch.getDisplaySnapshot().time_s).toBeCloseTo(2.0, 1);
+    expect(orch.getDisplaySnapshot().trolley_x_m).toBeLessThan(liveFinal.trolley_x_m);
+  });
+
+  it('scrubTo clamps to the recorded range', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    runToCompletion(orch);
+    orch.startReplay();
+
+    orch.scrubTo(-5);
+    expect(orch.getReplayTime_s()).toBeCloseTo(0, 6);
+
+    orch.scrubTo(999);
+    const bounds = orch.getReplayBounds()!;
+    expect(orch.getReplayTime_s()).toBeCloseTo(bounds.max_s, 6);
+  });
+
+  it('exitReplay returns display snapshot to the live engine state', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    runToCompletion(orch);
+    orch.startReplay();
+    orch.scrubTo(1.0);
+    orch.exitReplay();
+    expect(orch.getDisplaySnapshot()).toBe(orch.getSnapshot());
+  });
+
+  it('reset exits replay', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    runToCompletion(orch);
+    orch.startReplay();
+    orch.reset();
+    expect(orch.isReplayingNow()).toBe(false);
+    expect(orch.canReplay()).toBe(false);
+  });
 });
