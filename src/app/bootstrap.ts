@@ -3,11 +3,12 @@
 // independent of how/whether a game instance exists, per ADR-0001.
 
 import Phaser from 'phaser';
-import { CraneScene } from '../renderer/crane-scene';
+import { CraneScene, type CraneSceneData } from '../renderer/crane-scene';
 import { SCENE_HEIGHT_PX, SCENE_WIDTH_PX } from '../renderer/coordinate-transform';
+import type { RunOrchestrator } from './app-state';
 
-export function bootstrap(parent: string | HTMLElement): Phaser.Game {
-  return new Phaser.Game({
+export function bootstrap(parent: string | HTMLElement, orchestrator: RunOrchestrator): Phaser.Game {
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
     width: SCENE_WIDTH_PX,
@@ -19,6 +20,10 @@ export function bootstrap(parent: string | HTMLElement): Phaser.Game {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [CraneScene],
   });
+
+  const sceneData: CraneSceneData = { orchestrator };
+  game.scene.add('crane-scene', CraneScene, true, sceneData);
+
+  return game;
 }

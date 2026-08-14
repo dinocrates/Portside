@@ -4,27 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portside Motion Lab</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: #0b1a2a;
-        height: 100%;
-      }
-      #app {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-      }
-      canvas {
-        image-rendering: pixelated;
-      }
-    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="root">
+      <header id="top-bar">
+        <h1 id="scenario-title"></h1>
+        <div id="run-controls"></div>
+      </header>
+
+      <div id="layout">
+        <div id="scene-column">
+          <div id="scene-container"></div>
+          <div id="live-strip" aria-hidden="true"></div>
+          <div id="feedback-message" aria-live="polite"></div>
+        </div>
+
+        <div id="side-panel">
+          <div id="manual-controls-panel"></div>
+          <div id="profile-editor-panel"></div>
+          <div id="results-panel" hidden aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
