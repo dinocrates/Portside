@@ -13,13 +13,26 @@ export function confirmReset(orchestrator: RunOrchestrator): void {
   orchestrator.reset();
 }
 
+const MODE_LABEL: Record<UiMode, string> = { manual: 'Manual', automated: 'Automated' };
+
 export function mountRunControls(container: HTMLElement, orchestrator: RunOrchestrator): void {
+  // Progressive disclosure (spec design principle 4): only offer modes the
+  // scenario actually enables. The tutorial scenario, for instance, has no
+  // automated mode — showing that choice would just be a dead end.
+  const availableModes: UiMode[] = (['manual', 'automated'] as const).filter(
+    (m) => orchestrator.scenario.features[m === 'manual' ? 'manualMode' : 'automatedMode'],
+  );
+
+  const modeSelectorHtml =
+    availableModes.length > 1
+      ? `<fieldset class="mode-selector">
+          <legend>Mode</legend>
+          ${availableModes.map((m) => `<label><input type="radio" name="mode" value="${m}"> ${MODE_LABEL[m]}</label>`).join('')}
+        </fieldset>`
+      : '';
+
   container.innerHTML = `
-    <fieldset class="mode-selector">
-      <legend>Mode</legend>
-      <label><input type="radio" name="mode" value="manual"> Manual</label>
-      <label><input type="radio" name="mode" value="automated"> Automated</label>
-    </fieldset>
+    ${modeSelectorHtml}
     <div class="run-buttons" role="group" aria-label="Run controls">
       <button type="button" data-action="start">Start</button>
       <button type="button" data-action="pause-resume">Pause</button>
@@ -27,6 +40,8 @@ export function mountRunControls(container: HTMLElement, orchestrator: RunOrches
       <button type="button" data-action="reset">Reset</button>
     </div>
   `;
+
+  if (availableModes.length === 1) orchestrator.setMode(availableModes[0]!);
 
   const modeInputs = Array.from(container.querySelectorAll<HTMLInputElement>('input[name="mode"]'));
   const startBtn = container.querySelector<HTMLButtonElement>('[data-action="start"]')!;

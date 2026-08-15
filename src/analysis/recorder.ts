@@ -46,4 +46,11 @@ export class Recorder {
   getSamples(): readonly SimulationSnapshot[] {
     return this.samples;
   }
+
+  /** Bulk-load a previously-recorded sample set (spec §12.2: restoring the most recent completed run from local storage) — never re-derived from replay, just handed back exactly as recorded. */
+  restore(samples: readonly SimulationSnapshot[]): void {
+    this.samples = [...samples];
+    const last = this.samples[this.samples.length - 1];
+    this.nextSampleAt_s = last ? last.time_s + this.sampleInterval_s : 0;
+  }
 }

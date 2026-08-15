@@ -100,7 +100,14 @@ export function mountManualControls(
   });
 
   // Loss of focus clears held-key state and pauses the run — "a stuck key
-  // cannot continue a run" (spec §6.2, §12.2).
+  // cannot continue a run" (spec §6.2, §12.2). Two distinct cases, both
+  // handled: the whole window/tab losing focus (alt-tab, switching apps),
+  // and — just as real — the scene *element* losing focus on this same
+  // page, e.g. a student holding an arrow key while clicking Pause/Reset
+  // with the other hand. Without the element-level listener, that keyup
+  // would fire on whatever element focus moved to (not a descendant of
+  // sceneContainer), never reach this module's keyup handler, and leave
+  // the manual controller's direction stuck at the last-pressed key.
   window.addEventListener('blur', () => {
     release();
     orchestrator.pause();
@@ -110,6 +117,20 @@ export function mountManualControls(
       release();
       orchestrator.pause();
     }
+  });
+  // Element-level blur clears the held direction only — it deliberately
+  // does NOT also call orchestrator.pause() the way the window-level
+  // handlers below do. Reason: focus moving to another on-page control
+  // (e.g. clicking the Pause/Resume toggle itself) fires this blur BEFORE
+  // that control's own click handler runs. If this handler paused too,
+  // clicking "Pause" for the first time would race its own toggle logic —
+  // blur pauses, then the click reads "already paused" and calls
+  // resume() instead, silently undoing the click. Clearing the stuck
+  // direction is enough to make the physics stop accelerating; the
+  // explicit pause/resume/step/reset controls remain responsible for
+  // their own, unambiguous state transitions.
+  sceneContainer.addEventListener('blur', () => {
+    release();
   });
 
   function render(): void {

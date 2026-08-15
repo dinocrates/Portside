@@ -31,7 +31,18 @@
   "cargo": {
     "simplifiedThresholdOnly": true
   },
-  "scoring": [],
+  "scoring": [
+    {
+      "id": "final-position",
+      "description": "Get roughly to the practice target.",
+      "kind": "finalPosition"
+    },
+    {
+      "id": "final-speed",
+      "description": "Come to a stop.",
+      "kind": "finalSpeed"
+    }
+  ],
   "pedagogy": {
     "showLiveGraphs": true,
     "allowPredictionPreview": true,

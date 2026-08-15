@@ -340,6 +340,42 @@ export class RunOrchestrator {
     this.emitChange();
   }
 
+  // --- Restoring persisted state (spec §12.2: local-draft/last-run autosave) ---
+
+  /** Apply a previously-saved draft (mode + in-progress profile edits). Only meaningful before any run has started this session. */
+  restoreDraft(draft: { mode: UiMode; profile: MotionProfile }): void {
+    this.mode = draft.mode;
+    this.profile = draft.profile;
+    this.emitChange();
+  }
+
+  /**
+   * Hydrate the orchestrator to show a previously-completed run (results,
+   * charts, replay) without rerunning physics — spec §12.2: "Page reload
+   * may restore... the most recent completed run." The engine's own live
+   * state is untouched; this only replaces the display-facing snapshot
+   * and recorded samples. Reset (or a new Start) discards it exactly like
+   * any other completed run.
+   */
+  restoreCompletedRun(run: {
+    mode: UiMode;
+    profileUsedForRun: MotionProfile | null;
+    seed: string;
+    finalSnapshot: SimulationSnapshot;
+    samples: readonly SimulationSnapshot[];
+  }): void {
+    if (run.finalSnapshot.runState !== 'complete' && run.finalSnapshot.runState !== 'failed') return;
+    this.mode = run.mode;
+    this.profileUsedForRun = run.profileUsedForRun;
+    this.seed = run.seed;
+    this.snapshot = run.finalSnapshot;
+    this.recorder.restore(run.samples);
+    this.started = true;
+    this.paused = false;
+    this.isReplaying = false;
+    this.emitChange();
+  }
+
   // --- Frame tick (called once per rendered frame) ---------------------
 
   /** Called every rendered frame (e.g. from CraneScene.update). No-op unless a run is active, unpaused, and not yet terminal. */

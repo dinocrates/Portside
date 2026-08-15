@@ -11,10 +11,14 @@ describe('scenario schema validation', () => {
     expect(scenario.geometry.targetX_m).toBe(30);
   });
 
-  it('accepts the Controls Tutorial scenario', () => {
+  it('accepts the Controls Tutorial scenario, completable with generous tolerances', () => {
     const scenario = validateScenario(tutorial);
     expect(scenario.id).toBe('controls-tutorial');
-    expect(scenario.scoring).toHaveLength(0);
+    // Tutorial must have completion requirements (spec §10.2: "no failure
+    // penalty" means generous tolerances, not "impossible to complete" —
+    // an empty scoring array can never satisfy evaluateRequirements'
+    // completion check, see src/sim/metrics.ts).
+    expect(scenario.scoring.length).toBeGreaterThan(0);
   });
 
   it('rejects a scenario missing required fields, with a developer-readable message', () => {

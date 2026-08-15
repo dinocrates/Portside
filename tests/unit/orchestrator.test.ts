@@ -234,3 +234,63 @@ describe('RunOrchestrator — replay', () => {
     expect(orch.canReplay()).toBe(false);
   });
 });
+
+describe('RunOrchestrator — restoring persisted state (spec §12.2)', () => {
+  it('restoreDraft applies the saved mode and profile', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    const profile = [{ id: 'x', name: 'Custom', duration_s: 2, trolleyAcceleration_mps2: 0.3 }];
+    orch.restoreDraft({ mode: 'automated', profile });
+    expect(orch.getMode()).toBe('automated');
+    expect(orch.getProfile()).toEqual(profile);
+  });
+
+  it('restoreCompletedRun hydrates a terminal run without touching the live engine', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    const profile = [
+      { id: 'accelerate', name: 'Accelerate', duration_s: 5.0, trolleyAcceleration_mps2: 0.8 },
+      { id: 'cruise', name: 'Cruise', duration_s: 2.5, trolleyAcceleration_mps2: 0.0 },
+      { id: 'decelerate', name: 'Decelerate', duration_s: 5.0, trolleyAcceleration_mps2: -0.8 },
+    ];
+    const finalSnapshot = {
+      time_s: 12.69,
+      runState: 'complete' as const,
+      activePhaseId: null,
+      trolley_x_m: 30,
+      trolley_v_mps: 0,
+      trolley_a_mps2: 0,
+      commanded_trolley_a_mps2: 0,
+      attachment: 'attached' as const,
+      requirementResults: [{ id: 'final-position', description: 'x', satisfied: true }],
+    };
+    const samples = [finalSnapshot];
+
+    orch.restoreCompletedRun({ mode: 'automated', profileUsedForRun: profile, seed: 'restored-seed', finalSnapshot, samples });
+
+    expect(orch.getSnapshot()).toEqual(finalSnapshot);
+    expect(orch.getRecordedSamples()).toEqual(samples);
+    expect(orch.getProfileUsedForRun()).toEqual(profile);
+    expect(orch.getSeed()).toBe('restored-seed');
+    expect(orch.hasStarted()).toBe(true);
+    expect(orch.canReplay()).toBe(true);
+    // A restored run is a past result, not a live one — Start requires an
+    // explicit Reset first, same as any other completed run.
+    expect(orch.canStart()).toBe(false);
+  });
+
+  it('restoreCompletedRun refuses a non-terminal snapshot (defensive — should never happen with well-formed persisted data)', () => {
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    const notTerminal = {
+      time_s: 1,
+      runState: 'running' as const,
+      activePhaseId: null,
+      trolley_x_m: 1,
+      trolley_v_mps: 1,
+      trolley_a_mps2: 0,
+      commanded_trolley_a_mps2: 0,
+      attachment: 'attached' as const,
+    };
+    orch.restoreCompletedRun({ mode: 'manual', profileUsedForRun: null, seed: 's', finalSnapshot: notTerminal, samples: [notTerminal] });
+    expect(orch.hasStarted()).toBe(false);
+    expect(orch.getSnapshot().runState).toBe('ready');
+  });
+});

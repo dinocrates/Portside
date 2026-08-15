@@ -2,13 +2,16 @@ import '../src/styles/app.css';
 import { bootstrap } from './app/bootstrap';
 import { RunOrchestrator } from './app/app-state';
 import { validateScenario } from './scenarios/loader';
-import fragileFreightJson from './scenarios/fragile-freight.json';
+import { getScenarioJson, resolveScenarioId } from './scenarios/registry';
 import { mountRunControls } from './ui/run-controls';
 import { mountManualControls } from './ui/manual-controls';
 import { mountProfileEditor } from './ui/profile-editor';
 import { mountResultsPanel } from './ui/results-panel';
 import { mountFeedbackMessage, mountLiveStrip } from './ui/live-strip';
 import { mountAnalysisView } from './ui/analysis-view';
+import { mountScenarioSwitcher } from './ui/scenario-switcher';
+import { loadDraft, loadLastRun, saveDraft, saveLastRun } from './app/persistence';
+import type { SimulationSnapshot } from './sim/model/snapshot';
 
 function byId(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -16,11 +19,21 @@ function byId(id: string): HTMLElement {
   return el;
 }
 
-const scenario = validateScenario(fragileFreightJson);
+const scenarioId = resolveScenarioId(new URLSearchParams(window.location.search).get('scenario'));
+const scenario = validateScenario(getScenarioJson(scenarioId));
 const orchestrator = new RunOrchestrator(scenario, `session-${Date.now()}`);
 
 byId('scenario-title').textContent = scenario.title;
+byId('scenario-brief').textContent = scenario.brief;
 document.title = `${scenario.title} — Portside Motion Lab`;
+mountScenarioSwitcher(byId('scenario-switcher'), scenarioId);
+
+// Restore local draft / most recent completed run before mounting UI, so
+// the first render already reflects them (spec §12.2).
+const draft = loadDraft(scenario.id);
+if (draft) orchestrator.restoreDraft(draft);
+const lastRun = loadLastRun(scenario.id);
+if (lastRun) orchestrator.restoreCompletedRun(lastRun);
 
 const sceneContainer = byId('scene-container');
 bootstrap(sceneContainer, orchestrator);
@@ -58,4 +71,25 @@ orchestrator.onChange(() => {
     sceneContainer.focus();
   }
   wasStarted = isStarted;
+});
+
+// Autosave (spec §12.2): the draft profile on every edit, and the most
+// recent completed run once it actually reaches a terminal state.
+let lastSavedRunSamples: readonly SimulationSnapshot[] | null = null;
+orchestrator.onChange(() => {
+  saveDraft(scenario.id, { mode: orchestrator.getMode(), profile: orchestrator.getProfile() });
+
+  const snapshot = orchestrator.getSnapshot();
+  const terminal = snapshot.runState === 'complete' || snapshot.runState === 'failed';
+  const samples = orchestrator.getRecordedSamples();
+  if (terminal && samples !== lastSavedRunSamples) {
+    saveLastRun(scenario.id, {
+      mode: orchestrator.getMode(),
+      profileUsedForRun: orchestrator.getProfileUsedForRun(),
+      seed: orchestrator.getSeed(),
+      finalSnapshot: snapshot,
+      samples: [...samples],
+    });
+    lastSavedRunSamples = samples;
+  }
 });
