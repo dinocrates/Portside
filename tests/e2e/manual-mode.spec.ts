@@ -25,16 +25,20 @@ const HOLD_SIM_TIME_S = 2.236;
 test.describe('Manual mode — Controls Tutorial', () => {
   // This file's tests hold real keyboard input for multi-second stretches
   // of simulated time. Headless WebKit in this sandboxed environment has
-  // shown genuine run-to-run variability there specifically — sometimes
-  // completing a ~2.2s-simulated hold + brake in ~10s wall-clock,
-  // sometimes needing much longer — confirmed by direct diagnostic
-  // scripts outside the test runner, not just inside it, and not
-  // reproduced under Chromium or Firefox. The physics itself is verified
-  // correct (unit tests, golden fixtures, and this file's own
-  // on-screen-button variant of the same interaction). A small retry
-  // allowance absorbs that environment-specific variability without
+  // shown the most run-to-run variability there — sometimes completing a
+  // ~2.2s-simulated hold + brake in ~10s wall-clock, sometimes needing
+  // much longer — confirmed by direct diagnostic scripts outside the test
+  // runner, not just inside it. Chromium is usually unaffected but has
+  // shown the same failure shape at a much lower rate in this same
+  // sandboxed environment after hours of continuous browser automation in
+  // one session (confirmed by isolating just this file with nothing else
+  // running and still seeing one retry needed). The physics itself is
+  // verified correct (unit tests, golden fixtures, and this file's own
+  // on-screen-button variant of the same interaction, which never shows
+  // this — only the sustained real-keyboard-hold path does). A small
+  // retry allowance absorbs that environment-specific variability without
   // masking a real regression — a genuine bug would fail consistently,
-  // not intermittently.
+  // not intermittently, and wouldn't be scoped to one specific input path.
   test.describe.configure({ retries: 2 });
 
   test.beforeEach(async ({ page }) => {

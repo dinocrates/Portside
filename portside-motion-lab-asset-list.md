@@ -7,6 +7,8 @@ Scene basics that constrain every asset below (§5.5): logical canvas **960×540
 
 Anchor conventions used below: **bottom-center** for anything standing on a surface (trolley, truck), **center** for anything whose physics origin is its own middle (container, cargo, spreader hook point).
 
+**Status (updated as art lands):** trolley, spreader, one container color, the transfer chassis, the full crane structure, and the port/ship/water/sky background are in and wired up in `src/renderer/crane-scene.ts` — see the ✅ markers below. The delivered art consolidated some planned files (fewer, larger composited images rather than many small layered ones); where that happened, the row below is annotated with what actually shipped instead of the original per-piece plan. Renderer layout constants (`CRANE_RAIL_FRACTION`, `BACKGROUND_QUAY_FRACTION` in `crane-scene.ts`) are derived from the delivered art's own measured proportions, not the placeholder numbers below.
+
 ---
 
 ## 1. Placeholder tier (Milestone 1) — no art asset creation needed
@@ -32,70 +34,65 @@ Grouped by spec §5.4 rows, expanded into actual files. Suggested format: PNG wi
 
 ### 2.1 Port background
 
+✅ **Delivered as one composited image instead of three layers:** `port-with-bow-ship-background-640x360-v1.png` (640×360, scaled 1.5× to fill the 960×540 canvas exactly) — sky, clouds, water, the ship's bow with stacked containers, the quay edge with bollards, and a hazy distant port skyline, all in one static painting rather than separate parallax-able layers. No parallax (planned as optional anyway). Static only — fine per §5.1, no motion required.
+
+Originally planned as separate layers (kept here for reference, not needed given the above):
+
 | File | Dimensions (px) | Notes |
 | --- | --- | --- |
 | `bg-sky.png` | 960×540 | Base layer, static |
 | `bg-port-silhouette.png` | 960×200 | Distant equipment/skyline, tileable width recommended |
 | `bg-water.png` | 960×120 | Animated via 2–3 frame loop or shader-free scroll; **motion must be decorative only** (§5.1) |
 
-Parallax across these three is optional (§5.4 says "optional reduced-motion-safe parallax") — build it as a stretch item, and gate it behind `prefers-reduced-motion`.
-
 ### 2.2 Ship
 
-| File | Dimensions | States |
-| --- | --- | --- |
-| `ship-hull.png` | ~480×220 | Single sprite; "idle" is the only required state |
-| `ship-bob` (frame data, not new art) | — | Optional 2–4 px vertical bob animation reusing `ship-hull.png` — implement as a tween on the sprite's y-offset, not separate frames |
-
-Anchor: bottom-center (sits on the waterline).
+✅ **Delivered baked into the background composite** (§2.1) rather than as a separate sprite — the ship's bow and stacked containers are part of `port-with-bow-ship-background-640x360-v1.png`, fixed at the source position. No independent bob animation (acceptable — decorative motion was always optional).
 
 ### 2.3 Gantry frame
+
+✅ **Delivered as one combined structure image**, not split rear/front: `sts-crane-structure.png` (562×300 native, scaled 1.5×) — legs, cross-bracing, boom, and the machinery house all in one sprite, rendered as a single layer (scene layer 3/8 collapsed into one, since there's no trolley/container cutout to route through — the trolley rides visually on top of the boom instead). No foreground safety-barrier layer yet.
+
+This is still the highest-risk asset for collision-geometry mismatch (§8.7 / plan §1 Milestone 3 task) once collision detection is implemented — build hitbox rectangles against it then, not before.
+
+Original planned per-piece dimensions (kept for reference):
 
 | File | Dimensions | Notes |
 | --- | --- | --- |
 | `gantry-rear.png` | ~960×420 | Rear structure — renders behind trolley rail/container (scene layer 3) |
 | `gantry-front.png` | ~960×420 | Foreground structure + safety barriers (scene layer 8) — must have transparent cutout where the container/trolley pass through |
 
-These two are the highest-risk asset for collision-geometry mismatch (§8.7 / plan §1 Milestone 3 task) — build hitbox rectangles against these *after* final art, not before.
-
 ### 2.4 Trolley rail + trolley
 
-| File | Dimensions | States |
-| --- | --- | --- |
-| `trolley-rail.png` | 960×16 (or matches gantry width) | Static track, one asset |
-| `trolley.png` | ~64×48 | Base sprite — build direction via horizontal flip in code, not two mirrored files |
-| `trolley-brake-fx.png` | ~24×16, 3–4 frame strip | Spark/dust cue under wheels when braking, layered on top of base trolley |
+✅ **Trolley delivered**: `trolley.png` (52×26 native). Single state only so far — idle/moving-left/moving-right/braking is handled by direction and velocity in code (matching the simplification already recommended below), not separate art.
 
-Spec lists idle/moving-left/moving-right/braking as 4 states (§5.4) — recommend collapsing to **1 base sprite + code-driven flip + 1 small braking overlay**, rather than 4 full unique sprites. Flag this simplification for art-direction sign-off; if rejected, budget 3 additional full trolley frames.
+⬜ **Trolley rail not delivered separately** — the rail is part of the `sts-crane-structure.png` boom (§2.3), not its own asset; no gap to fill here.
 
-Anchor: bottom-center (rides on rail).
+⬜ **Not yet delivered:** `trolley-brake-fx.png` spark/dust cue.
+
+Anchor as rendered: bottom-center, wheels on the boom's rail line (`CRANE_RAIL_FRACTION` in `crane-scene.ts`).
 
 ### 2.5 Spreader
 
-| File | Dimensions | States |
-| --- | --- | --- |
-| `spreader.png` spritesheet | ~96×24 per frame | Frames: open, closing (2–3 in-between), locked, opening (reuse closing reversed), fault (distinct color/icon, e.g. flashing red corner) |
+✅ **Delivered**: `spreader.png` (78×19 native). Single state (locked) — open/closing/opening/fault frames not yet delivered.
 
-Anchor: center (hook point aligns to cable end).
+Anchor as rendered: top-center, hangs below the cable; container hangs directly below it.
 
 ### 2.6 Container
 
-Minimum 4 colors × {normal, cutaway} = **8 files**, per §5.4:
+✅ **One color delivered**: `container-orange.png` (78×25 native). Still needed: 3 more colors (a **distinct palette**, not literal carrier branding — see open question 4 below) and the cutaway variant for each, per the original 8-file plan:
 
 | File | Dimensions | Notes |
 | --- | --- | --- |
 | `container-red.png` | ~96×64 | |
 | `container-blue.png` | ~96×64 | |
 | `container-green.png` | ~96×64 | |
-| `container-yellow.png` | ~96×64 | Or swap for a color set matching final palette |
 | `container-red-cutaway.png` | ~96×64 | Interior visible, floor line marked for cargo-offset rendering |
 | `container-blue-cutaway.png` | ~96×64 | |
 | `container-green-cutaway.png` | ~96×64 | |
-| `container-yellow-cutaway.png` | ~96×64 | |
 
 Cutaway variants need an interior floor guide (even if only used internally for aligning the cargo sprite) — flag this as a shared reference line, e.g. an agreed pixel row in the source file, so the cargo-shift renderer can place cargo consistently without per-container special-casing.
 
-Anchor: center (physics origin is container center per §8.6's `cargoOffset`).
+Anchor as rendered: top-center under the spreader (renderer computes the physics-center offset internally).
 
 ### 2.7 Internal cargo
 
@@ -108,13 +105,9 @@ Only render inside cutaway containers. 2 files, not 4, by reusing position/rotat
 
 ### 2.8 Truck / target bay
 
-| File | Dimensions | States |
-| --- | --- | --- |
-| `target-bay-empty.png` | ~140×90 | |
-| `target-bay-receiving.png` | ~140×90 | Or reuse empty + vector highlight ring instead of a new file |
-| `target-bay-loaded.png` | ~140×90 | Container visually seated |
+✅ **Delivered, renamed to match real port terminology**: `transfer-chassis.png` (100×18 native) — a chassis is the wheeled frame a container sits on for truck transport, a more accurate name than the placeholder "target bay." Single state only — empty/receiving/loaded variants not yet delivered (the target zone's dashed outline overlay currently carries the "receiving" cue instead).
 
-Anchor: bottom-center.
+Anchor as rendered: bottom-center, on the quay line.
 
 ### 2.9 Warning beacon
 
@@ -155,43 +148,37 @@ Not in §5.4's table but implied elsewhere in the spec — resolve before Milest
 
 Matches spec §11.3 repo layout:
 
+Actual filenames as delivered (source of truth — the tree below is the original plan, kept for what's still outstanding):
+
 ```text
 src/assets/
   sprites/
-    trolley.png
-    trolley-brake-fx.png
-    spreader.png            (+ atlas json)
-    container-{color}.png
-    container-{color}-cutaway.png
-    cargo-crate.png
-    cargo-crate-damaged.png
-    target-bay-empty.png
-    target-bay-receiving.png
-    target-bay-loaded.png
-    beacon.png               (+ atlas json)
-    fx-impact.png             (+ atlas json)
-    fx-secured.png            (+ atlas json)
-    fx-delivered.png          (+ atlas json)
+    trolley.png                          ✅ delivered (52×26)
+    spreader.png                         ✅ delivered (78×19), single state
+    container-orange.png                 ✅ delivered (78×25) — 1 of 4 colors
+    transfer-chassis.png                 ✅ delivered (100×18), renamed from target-bay-*
+    sts-crane-structure.png              ✅ delivered (562×300), combined gantry-rear+front+rail
+    container-{red,blue,green}.png       ⬜ not yet delivered
+    container-{color}-cutaway.png        ⬜ not yet delivered
+    cargo-crate.png / -damaged.png       ⬜ not yet delivered
+    trolley-brake-fx.png                 ⬜ not yet delivered
+    beacon.png                           ⬜ not yet delivered
+    fx-impact / -secured / -delivered.png ⬜ not yet delivered
   backgrounds/
-    bg-sky.png
-    bg-port-silhouette.png
-    bg-water.png
-    ship-hull.png
-    gantry-rear.png
-    gantry-front.png
-    trolley-rail.png
-  audio/                      (empty until prioritized)
+    port-with-bow-ship-background-640x360-v1.png  ✅ delivered — combined sky+water+ship+quay+distant skyline
+  audio/                                 (empty until prioritized)
 ```
 
 ## 5. Count summary
 
-- **Placeholder tier:** 0 files (code-drawn geometry)
-- **Production tier:** ~27 image files (with the trolley/cargo simplifications applied) or ~32 if art direction rejects those simplifications and wants full state coverage
-- **Vector-only (never sourced as images):** cables, position/velocity/acceleration/force overlay arrows, target/source zone outlines, phase/violation graph marks
+- **Placeholder tier:** 0 files (code-drawn geometry) — superseded now that production art has started landing
+- **Delivered so far:** 6 files (5 sprites + 1 background), wired into `src/renderer/crane-scene.ts`
+- **Still outstanding:** ~15–20 files depending on how the trolley/cargo simplifications land (container colors + cutaways, cargo crate, brake fx, beacon, collision/success fx)
+- **Vector-only (never sourced as images):** cables, position/velocity/acceleration/force overlay arrows, target/source zone outlines, phase/violation graph marks — all still code-drawn (`src/renderer/overlays.ts`) as planned
 
 ## 6. Open questions before sourcing/commissioning art
 
-1. Is there an existing ENGR-120 visual identity doc/palette to match, or are we establishing one here?
-2. Confirm the trolley (1 sprite + flip + brake overlay) and cargo (1 sprite + position-driven "sliding") simplifications with whoever owns art direction — they cut ~7 files but assume the renderer can sell "sliding" via transform alone.
-3. Who's producing final art — commissioned illustrator, asset pack + edits, or generated art? Affects whether "16-bit-inspired" needs a literal palette-limited pixel-art pipeline or just a stylized flat-illustration look with pixel-grid alignment.
-4. Container color choice: literal port container colors (Maersk blue, Evergreen green, etc.) risk implying real-brand association the spec explicitly disclaims (§4.3 "no exact reproduction of... branding") — pick a distinct palette.
+1. ~~Is there an existing ENGR-120 visual identity doc/palette to match?~~ Resolved in practice — the delivered pieces establish a semi-realistic painted/pixel-hybrid look (not strictly 16-bit-limited-palette); treat what's landed as the de facto style reference for anything commissioned next, rather than reopening this.
+2. Confirm the trolley (1 sprite + flip + brake overlay) and cargo (1 sprite + position-driven "sliding") simplifications with whoever owns art direction — the trolley simplification already matches what shipped (single sprite, no separate direction frames); cargo still pending.
+3. ~~Who's producing final art?~~ Resolved — in progress, delivered incrementally.
+4. **Still open:** container color choice. Literal port container colors (Maersk blue, Evergreen green, etc.) risk implying real-brand association the spec explicitly disclaims (§4.3 "no exact reproduction of... branding") — pick 3 more colors distinct from real carrier liveries before commissioning them.

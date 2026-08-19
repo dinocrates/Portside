@@ -87,6 +87,26 @@ describe('RunOrchestrator — manual mode', () => {
     expect(orch.getSnapshot().time_s).toBeCloseTo(before + 1 / 30, 9);
   });
 
+  it('holding a direction past reaching cruise speed does not spuriously fail the run (regression)', () => {
+    // Bug: the manual controller used to keep commanding full acceleration
+    // even after the physics clamp had already capped velocity at
+    // maxSpeed_mps. Every subsequent step's *unclamped* integration
+    // attempt then read as "exceeded max speed" (src/sim/physics/trolley.ts),
+    // which failed the run — even though the actual clamped velocity never
+    // exceeded the limit. A student holding the key at cruise (completely
+    // normal per spec §6.2, "accelerates toward the scenario's allowed
+    // manual speed") should never see their run fail for that alone.
+    const orch = new RunOrchestrator(scenario, 'test-seed');
+    orch.start();
+    orch.setManualDirection('right');
+    // 8s at aMax=0.8 reaches vMax=4.0 around t=5s; keep holding well past that.
+    for (let i = 0; i < Math.round(8 / dt); i++) orch.tick(dt);
+
+    expect(orch.getSnapshot().runState).toBe('running');
+    expect(orch.getSnapshot().trolley_v_mps).toBeCloseTo(scenario.limits.maxSpeed_mps, 2);
+    expect(orch.getSnapshot().trolley_a_mps2).toBeCloseTo(0, 2); // governed cruise, not still pushing at aMax
+  });
+
   it('an unavailable command sets feedback without altering state', () => {
     const orch = new RunOrchestrator(scenario, 'test-seed');
     orch.start();

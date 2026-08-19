@@ -30,6 +30,7 @@ test.describe('Automated mode — Fragile Freight Transfer', () => {
   });
 
   test('a profile that overspeeds fails with a concrete, specific reason', async ({ page }) => {
+    test.setTimeout(60_000); // see helpers.ts on headless WebKit's slower wall-clock physics timing
     // A single overlong acceleration phase — same shape as
     // tests/fixtures/golden-vectors/speed-limit-violation.json.
     const row = page.locator('table.profile-table tbody tr[data-id]').first();
@@ -42,7 +43,7 @@ test.describe('Automated mode — Fragile Freight Transfer', () => {
     }
 
     await page.click('button:has-text("Start")');
-    await waitForRunState(page, 'failed', 15_000);
+    await waitForRunState(page, 'failed');
 
     await expect(page.locator('#results-panel')).toContainText('Run failed');
     // A concrete, specific cause — not a collapsed pass/fail score (spec §7.2, §9.3).
