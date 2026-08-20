@@ -1,18 +1,29 @@
 // Drives real-time autoplay through a completed run's recorded snapshots
 // (spec §6.1: "Replay replays a completed run from recorded snapshots
 // without rerunning physics"). Manual dragging goes straight through
-// `RunOrchestrator.scrubTo` — this class only adds the "play automatically
+// `orchestrator.scrubTo` — this class only adds the "play automatically
 // at 1x" behavior on top, and is driven by an externally supplied
 // `tick(deltaMs)` (e.g. from the Phaser scene's update loop or a
 // `requestAnimationFrame` loop) so it stays framework-independent and
 // testable with fake time.
+//
+// Typed against a small structural interface rather than the concrete
+// RunOrchestrator — both RunOrchestrator (1D) and GantryOrchestrator (2D)
+// implement these same six methods, so this class needs no per-lab copy.
 
-import type { RunOrchestrator } from '../app/app-state';
+export interface ReplayableOrchestrator {
+  canReplay(): boolean;
+  isReplayingNow(): boolean;
+  startReplay(): void;
+  getReplayBounds(): { min_s: number; max_s: number } | null;
+  getReplayTime_s(): number;
+  scrubTo(time_s: number): void;
+}
 
 export class ReplayPlayer {
   private playing = false;
 
-  constructor(private readonly orchestrator: RunOrchestrator) {}
+  constructor(private readonly orchestrator: ReplayableOrchestrator) {}
 
   isPlaying(): boolean {
     return this.playing;

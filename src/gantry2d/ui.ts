@@ -6,8 +6,10 @@
 // the 1D lab's src/ui/* split into one-file-per-concern once there was
 // enough surface area to justify it; this can split the same way later.
 
-import type { GantryOrchestrator } from './orchestrator';
+import type { GantryOrchestrator, GantryUiMode } from './orchestrator';
 import type { AxisDirection } from './manual-controller';
+
+const MODE_LABEL: Record<GantryUiMode, string> = { manual: 'Manual', automated: 'Automated' };
 
 const X_KEYS: Record<string, AxisDirection> = {
   ArrowLeft: 'negative',
@@ -36,12 +38,29 @@ export function mountGantryUi(sceneContainer: HTMLElement, orchestrator: GantryO
   byId('gantry-title').textContent = orchestrator.scenario.title;
   byId('gantry-brief').textContent = orchestrator.scenario.brief;
 
+  const modeSelector = byId('gantry-mode-selector');
   const startBtn = document.querySelector<HTMLButtonElement>('[data-action="start"]')!;
   const pauseResumeBtn = document.querySelector<HTMLButtonElement>('[data-action="pause-resume"]')!;
   const resetBtn = document.querySelector<HTMLButtonElement>('[data-action="reset"]')!;
   const liveStrip = byId('gantry-live-strip');
   const resultsPanel = byId('gantry-results');
   const manualControls = byId('gantry-manual-controls');
+  const profileEditorPanel = byId('gantry-profile-editor');
+
+  modeSelector.innerHTML = `
+    <fieldset class="mode-selector">
+      <legend>Mode</legend>
+      ${(['manual', 'automated'] as const)
+        .map((m) => `<label><input type="radio" name="gantry-mode" value="${m}"> ${MODE_LABEL[m]}</label>`)
+        .join('')}
+    </fieldset>
+  `;
+  const modeInputs = Array.from(modeSelector.querySelectorAll<HTMLInputElement>('input[name="gantry-mode"]'));
+  modeInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.checked) orchestrator.setMode(input.value as GantryUiMode);
+    });
+  });
 
   manualControls.innerHTML = `
     <p class="hint">Click the scene, then use the arrow keys or WASD — hold two at once to move diagonally.</p>
@@ -150,6 +169,17 @@ export function mountGantryUi(sceneContainer: HTMLElement, orchestrator: GantryO
   function render(): void {
     const display = orchestrator.getDisplayRunState();
     const s = orchestrator.getSnapshot();
+    const mode = orchestrator.getMode();
+    const midRun = orchestrator.hasStarted() && display === 'running';
+
+    modeInputs.forEach((input) => {
+      input.checked = input.value === mode;
+      input.disabled = midRun;
+    });
+    // Progressive disclosure: only the panel for the active mode is shown
+    // (same principle as the 1D lab's manual-controls-panel/profile-editor-panel toggle).
+    manualControls.hidden = mode !== 'manual';
+    profileEditorPanel.hidden = mode !== 'automated';
 
     startBtn.disabled = !orchestrator.canStart();
     pauseResumeBtn.disabled = !(display === 'running' || display === 'paused');
@@ -177,11 +207,20 @@ export function mountGantryUi(sceneContainer: HTMLElement, orchestrator: GantryO
             </li>`,
         )
         .join('');
-      resultsPanel.innerHTML = `<h2 class="${verdictClass}">${verdict}</h2><ul class="requirement-list">${rows}</ul>`;
+      resultsPanel.innerHTML = `
+        <h2 class="${verdictClass}">${verdict}</h2>
+        <dl class="results-summary">
+          <div><dt>Total time</dt><dd>${s.time_s.toFixed(2)} s</dd></div>
+          <div><dt>Final X</dt><dd>${s.x_m.toFixed(2)} m</dd></div>
+          <div><dt>Final Y</dt><dd>${s.y_m.toFixed(2)} m</dd></div>
+          <div><dt>Final speed</dt><dd>${Math.hypot(s.vx_mps, s.vy_mps).toFixed(2)} m/s</dd></div>
+        </dl>
+        <ul class="requirement-list">${rows}</ul>
+      `;
     }
 
     const isStarted = orchestrator.hasStarted();
-    if (isStarted && !wasStarted) sceneContainer.focus();
+    if (isStarted && !wasStarted && mode === 'manual') sceneContainer.focus();
     wasStarted = isStarted;
   }
 

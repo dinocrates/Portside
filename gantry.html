@@ -9,6 +9,7 @@
     <div id="gantry-page">
       <header id="gantry-top-bar">
         <h1 id="gantry-title"></h1>
+        <div id="gantry-mode-selector"></div>
         <div class="run-buttons" role="group" aria-label="Run controls">
           <button type="button" data-action="start">Start</button>
           <button type="button" data-action="pause-resume">Pause</button>
@@ -25,9 +26,12 @@
         </div>
         <div id="gantry-side-panel">
           <div id="gantry-manual-controls"></div>
+          <div id="gantry-profile-editor" hidden></div>
           <div id="gantry-results" hidden aria-live="polite"></div>
         </div>
       </div>
+
+      <section id="gantry-analysis-view" hidden aria-label="Run analysis: graphs, replay, and export"></section>
     </div>
     <script type="module" src="/src/gantry2d/main.ts"></script>
   </body>

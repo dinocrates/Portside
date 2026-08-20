@@ -28,12 +28,58 @@ export async function fillTrapezoidalProfile(page: Page): Promise<void> {
 // bug to paper over with a tiny timeout.
 export const RUN_STATE_TIMEOUT_MS = 40_000;
 
-export async function waitForRunState(page: Page, state: string, timeout = RUN_STATE_TIMEOUT_MS): Promise<void> {
+export async function waitForRunState(
+  page: Page,
+  state: string,
+  timeout = RUN_STATE_TIMEOUT_MS,
+  liveStripSelector = '#live-strip',
+): Promise<void> {
   await page.waitForFunction(
-    (s) => document.querySelector('#live-strip')?.textContent?.includes(`state = ${s}`),
-    state,
+    ({ s, sel }) => document.querySelector(sel)?.textContent?.includes(`state = ${s}`),
+    { s: state, sel: liveStripSelector },
     { timeout },
   );
+}
+
+/** Fill one gantry profile-editor row's duration and two acceleration fields. */
+export async function setGantryPhase(
+  page: Page,
+  index: number,
+  duration_s: number,
+  ax_mps2: number,
+  ay_mps2: number,
+): Promise<void> {
+  const row = page.locator('table.profile-table tbody tr[data-id]').nth(index);
+  await row.locator('[data-field="duration_s"]').fill(String(duration_s));
+  await row.locator('[data-field="ax_mps2"]').fill(String(ax_mps2));
+  await row.locator('[data-field="ay_mps2"]').fill(String(ay_mps2));
+}
+
+/**
+ * An exact dual-axis phase profile that lands the overhead-gantry-demo
+ * scenario's claw on target at rest — the same analytic construction as
+ * tests/unit/gantry2d-automated.test.ts's buildMergedProfile(), precomputed
+ * here so e2e specs don't need to recompute it. See that test file's
+ * comments for why each leg is floored to the dt grid with a one-step
+ * safety margin (a scripted automated phase has no per-step "already at
+ * cruise speed" governor the way the manual controller does).
+ */
+export const GANTRY_DEMO_MERGED_PROFILE: [number, number, number][] = [
+  [1.6916666666666667, 1.2, 1.2],
+  [0.3833333333333335, 1.2, -1.2],
+  [0.7000000000000002, 0, -1.2],
+  [0.608333333333333, -1.2, -1.2],
+  [1.4666666666666672, -1.2, 0],
+];
+
+export async function fillGantryDemoProfile(page: Page): Promise<void> {
+  // The default template has 3 phases; add 2 more to fit the 5-leg profile.
+  await page.click('[data-action="add-phase"]');
+  await page.click('[data-action="add-phase"]');
+  for (let i = 0; i < GANTRY_DEMO_MERGED_PROFILE.length; i++) {
+    const [duration_s, ax_mps2, ay_mps2] = GANTRY_DEMO_MERGED_PROFILE[i]!;
+    await setGantryPhase(page, i, duration_s, ax_mps2, ay_mps2);
+  }
 }
 
 /**
@@ -41,8 +87,8 @@ export async function waitForRunState(page: Page, state: string, timeout = RUN_S
  * strip. Used to drive interactions by simulated time rather than
  * wall-clock waits — see `holdDirectionUntilSimTime`.
  */
-export async function readSimTime(page: Page): Promise<number> {
-  const text = (await page.locator('#live-strip').textContent()) ?? '';
+export async function readSimTime(page: Page, liveStripSelector = '#live-strip'): Promise<number> {
+  const text = (await page.locator(liveStripSelector).textContent()) ?? '';
   const match = text.match(/t = ([\d.]+) s/);
   return match ? Number(match[1]) : NaN;
 }
@@ -65,15 +111,16 @@ export async function holdDirectionUntilSimTime(
   press: () => Promise<void>,
   release: () => Promise<void>,
   timeout = RUN_STATE_TIMEOUT_MS,
+  liveStripSelector = '#live-strip',
 ): Promise<void> {
   await press();
   await page.waitForFunction(
-    (t) => {
-      const text = document.querySelector('#live-strip')?.textContent ?? '';
+    ({ t, sel }) => {
+      const text = document.querySelector(sel)?.textContent ?? '';
       const match = text.match(/t = ([\d.]+) s/);
       return match !== null && Number(match[1]) >= t;
     },
-    targetSimTime_s,
+    { t: targetSimTime_s, sel: liveStripSelector },
     { timeout },
   );
   await release();

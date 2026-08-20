@@ -78,11 +78,20 @@
 }
 
 #gantry-manual-controls,
+#gantry-profile-editor,
 #gantry-results {
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
+}
+
+#gantry-analysis-view {
+  margin: 0 1rem 1rem;
+  padding: 0.75rem 1rem 1rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .dpad {
