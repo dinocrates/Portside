@@ -61,6 +61,22 @@ body {
   gap: 0.5rem;
 }
 
+#gantry-link {
+  margin-left: auto;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  text-decoration: none;
+  background: white;
+  white-space: nowrap;
+}
+
+#gantry-link:hover {
+  border-color: var(--accent);
+}
+
 .scenario-link {
   font-size: 0.85rem;
   padding: 0.3rem 0.6rem;

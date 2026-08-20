@@ -1,0 +1,23 @@
+{
+  "id": "overhead-gantry-demo",
+  "version": 1,
+  "title": "Overhead Gantry — Prize Retrieval",
+  "brief": "A two-axis bridge crane, viewed from above — move along both the X and Y rails at once, claw-machine style, to reach the target and stop. This is a separate lab from the ship-to-shore trolley: two independently controllable axes instead of one.",
+  "geometry": {
+    "minX_m": 0,
+    "maxX_m": 10,
+    "minY_m": 0,
+    "maxY_m": 6,
+    "initialX_m": 1,
+    "initialY_m": 1,
+    "targetX_m": 8,
+    "targetY_m": 4.5,
+    "targetTolerance_m": 0.5
+  },
+  "limits": {
+    "maxSpeed_mps": 2.5,
+    "maxAcceleration_mps2": 1.2,
+    "finalSpeedTolerance_mps": 0.4,
+    "completionDwellTime_s": 0.25
+  }
+}

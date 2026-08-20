@@ -9,8 +9,22 @@ import { NEUTRAL_COMMAND, type ControlCommand } from '../sim/model/commands';
 import type { ScenarioConfig } from '../scenarios/schema';
 import type { SimulationSnapshot } from '../sim/model/snapshot';
 import type { Controller } from './controller-types';
+import { DEFAULT_TOLERANCES } from '../sim/model/parameters';
 
 export type ManualDirection = 'none' | 'left' | 'right';
+
+// A governed-cruise decision ("are we already at the cap?") needs the
+// same epsilon tolerance as the physics layer's own limit comparisons
+// (src/sim/physics/trolley.ts) — an *exact* `>=` against a value reached
+// via ~hundreds of accumulated floating-point additions can land a
+// hair under the true cap (e.g. 2.499999999999998 instead of 2.5),
+// which would otherwise let one more full-acceleration step through and
+// genuinely overshoot by a whole step's worth of velocity — not float
+// noise, a real overshoot — and spuriously fail the run. Caught by a
+// synthetic fixed-step unit test landing exactly on that boundary; real
+// browser frame timing rarely lands exactly there, which is why this
+// stayed latent until the 2D gantry lab's tests exposed it.
+const CRUISE_EPS = DEFAULT_TOLERANCES.floatEquality;
 
 export class ManualController implements Controller {
   private direction: ManualDirection = 'none';
@@ -41,7 +55,7 @@ export class ManualController implements Controller {
       // Pressing the opposite direction commands braking before reversal (spec §6.2).
       if (vx > 0) {
         targetTrolleyAcceleration_mps2 = -maxAccel;
-      } else if (vx <= -maxSpeed) {
+      } else if (vx <= -maxSpeed + CRUISE_EPS) {
         // Already governed at manual cruise speed — hold it, don't keep
         // commanding full accel. Continuing to push here doesn't move the
         // trolley any faster (the physics clamp already caps it), it only
@@ -55,7 +69,7 @@ export class ManualController implements Controller {
     } else if (this.direction === 'right') {
       if (vx < 0) {
         targetTrolleyAcceleration_mps2 = maxAccel;
-      } else if (vx >= maxSpeed) {
+      } else if (vx >= maxSpeed - CRUISE_EPS) {
         targetTrolleyAcceleration_mps2 = 0; // governed cruise — see the mirrored comment above
       } else {
         targetTrolleyAcceleration_mps2 = maxAccel;
