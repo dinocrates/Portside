@@ -14,12 +14,10 @@ export const SCENE_HEIGHT_PX = 540;
 
 const HORIZONTAL_MARGIN_PX = 60;
 
-// Vertical scene rows (rail height, container drop, ground line) are no
-// longer fixed constants here — once real crane art landed (Milestone 3),
-// CraneScene derives them from the art's own measured proportions instead
-// (see CRANE_GROUND_Y_PX / CRANE_RAIL_FRACTION in crane-scene.ts), so the
-// trolley/spreader/container line up with whatever the structure sprite
-// actually looks like rather than an independent guess.
+/** Fixed scene rows for the placeholder tier (spec §5.3 scene layers), in pixels from the top. */
+export const TROLLEY_RAIL_Y_PX = 200;
+export const CONTAINER_Y_PX = 300;
+export const QUAY_TOP_Y_PX = 460;
 
 export interface CoordinateTransform {
   /** Convert an authoritative physics x (meters, spec §8.1 convention: positive ship→shore) to a scene-pixel x. */
